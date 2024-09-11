@@ -1,18 +1,17 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jacks AI Website</title>
+    <title>Jacks AI website</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             background-color: #f0f4f8;
-            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
         }
-
         .container {
             display: flex;
             gap: 10px;
@@ -22,9 +21,8 @@
             background-color: #ffffff;
             border-radius: 8px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
+            flex-wrap: wrap;
         }
-
         .chat-box, .response-box {
             border: 1px solid #d0d6db;
             padding: 10px;
@@ -32,50 +30,41 @@
             height: 300px;
             overflow-y: auto;
             background-color: #ffffff;
-            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
         }
-
         .chat-box {
-            flex: 1;
+            width: 100%;
+            max-width: 50%;
         }
-
         .response-box {
-            flex: 1;
+            width: 100%;
+            max-width: 50%;
         }
-
         .message {
             border-radius: 4px;
             padding: 8px;
             margin-bottom: 8px;
             max-width: 80%;
             word-wrap: break-word;
-            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
         }
-
         .user-message {
             background-color: #d4edda;
             align-self: flex-end;
         }
-
         .bot-message {
             background-color: #cce5ff;
             align-self: flex-start;
         }
-
         .message-label {
             font-weight: bold;
             margin-bottom: 4px;
         }
-
         input[type="text"], input[type="password"] {
             width: calc(100% - 22px);
             padding: 10px;
             border: 1px solid #d0d6db;
             border-radius: 4px;
             margin-bottom: 10px;
-            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
         }
-
         button {
             padding: 10px 20px;
             border: none;
@@ -86,43 +75,45 @@
             cursor: pointer;
             margin-top: 10px;
         }
-
         button:hover {
             background-color: #218838;
         }
-
         .hidden {
             display: none;
         }
-
         .header {
             font-size: 24px;
             font-weight: bold;
             color: #28a745; /* Green */
             margin-bottom: 20px;
         }
-
         .toggle-button {
             background-color: #ffffff;
             border: 1px solid #d0d6db;
             color: #28a745; /* Green */
             margin-bottom: 20px;
         }
-
         .toggle-button:hover {
             background-color: #f0f4f8;
         }
-
         .response-list {
             list-style: none;
             padding: 0;
-            margin: 0;
         }
-
         .response-list li {
             padding: 8px;
             border-bottom: 1px solid #d0d6db;
             font-size: 14px;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .chat-box, .response-box {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -168,34 +159,46 @@
 </div>
 
 <script>
-    // Firebase configuration (replace with your own config)
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
+    const CORRECT_PASSWORD = 'JacksAITeam9';  // Replace with your desired password
 
-    // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const database = firebase.database(app);
+    // Function to toggle the visibility of the password menu
+    function togglePasswordMenu() {
+        const passwordSection = document.getElementById("passwordSection");
+        const defineResponseSection = document.getElementById("defineResponseSection");
+        const toggleButton = document.querySelector(".toggle-button");
 
-    // Function to load responses from Firebase
+        if (passwordSection.classList.contains("hidden")) {
+            passwordSection.classList.remove("hidden");
+            toggleButton.textContent = "Hide Password Menu";
+        } else {
+            passwordSection.classList.add("hidden");
+            defineResponseSection.classList.add("hidden");  // Hide define responses section
+            toggleButton.textContent = "Show Password Menu";
+        }
+    }
+
+    // Function to check the password
+    function verifyPasswordAndDefine() {
+        const passwordInputDefine = document.getElementById("passwordInputDefine").value.trim();
+        if (passwordInputDefine === CORRECT_PASSWORD) {
+            document.getElementById("passwordErrorDefine").classList.add("hidden");
+            document.getElementById("defineResponseSection").classList.remove("hidden");
+            document.getElementById("passwordSection").classList.add("hidden");
+        } else {
+            document.getElementById("passwordErrorDefine").classList.remove("hidden");
+        }
+    }
+
+    // Function to load responses from local storage
     function loadResponses() {
+        let responses = JSON.parse(localStorage.getItem("responses")) || {};
         const responseList = document.getElementById("responseList");
         responseList.innerHTML = "";  // Clear the current list
-
-        database.ref('responses').once('value').then(snapshot => {
-            const responses = snapshot.val() || {};
-            for (const [input, response] of Object.entries(responses)) {
-                let li = document.createElement("li");
-                li.textContent = `${input} => ${response}`;
-                responseList.appendChild(li);
-            }
-        });
+        for (const [input, response] of Object.entries(responses)) {
+            let li = document.createElement("li");
+            li.textContent = `${input} => ${response}`;
+            responseList.appendChild(li);
+        }
     }
 
     // Function to define a new response
@@ -204,20 +207,25 @@
         const responseWord = document.getElementById("responseWord").value.trim();
 
         if (inputWord && responseWord) {
-            database.ref('responses/' + inputWord).set(responseWord).then(() => {
-                document.getElementById("inputWord").value = "";
-                document.getElementById("responseWord").value = "";
-                loadResponses();  // Refresh the responses list
-            });
+            // Load existing responses
+            let responses = JSON.parse(localStorage.getItem("responses")) || {};
+            responses[inputWord] = responseWord;
+            localStorage.setItem("responses", JSON.stringify(responses));
+
+            // Clear inputs
+            document.getElementById("inputWord").value = "";
+            document.getElementById("responseWord").value = "";
+
+            // Reload the responses list
+            loadResponses();
         }
     }
 
     // Function to clear all responses
     function clearResponses() {
         if (confirm("Are you sure you want to clear all responses?")) {
-            database.ref('responses').remove().then(() => {
-                loadResponses();  // Refresh the responses list
-            });
+            localStorage.removeItem("responses");
+            loadResponses();  // Refresh the responses list
         }
     }
 
@@ -235,19 +243,18 @@
             chatBox.appendChild(newMessage);
 
             // Generate and display response
-            database.ref('responses/' + message).once('value').then(snapshot => {
-                let response = snapshot.val() || "I don't understand that.";
-                let responseBox = document.getElementById("responseBox");
-                let newResponse = document.createElement("div");
-                newResponse.textContent = response;
-                newResponse.className = 'message bot-message';
-                responseBox.appendChild(newResponse);
+            let responses = JSON.parse(localStorage.getItem("responses")) || {};
+            let response = responses[message] || "I don't understand that.";
+            let responseBox = document.getElementById("responseBox");
+            let newResponse = document.createElement("div");
+            newResponse.textContent = response;
+            newResponse.className = 'message bot-message';
+            responseBox.appendChild(newResponse);
 
-                // Clear input
-                messageInput.value = "";
-                chatBox.scrollTop = chatBox.scrollHeight;  // Scroll to bottom
-                responseBox.scrollTop = responseBox.scrollHeight;  // Scroll to bottom
-            });
+            // Clear input
+            messageInput.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;  // Scroll to bottom
+            responseBox.scrollTop = responseBox.scrollHeight;  // Scroll to bottom
         }
     }
 
