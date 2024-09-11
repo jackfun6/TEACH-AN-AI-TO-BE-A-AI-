@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jacks AI Website</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f4f8;
+            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
+        }
+
+        .container {
+            display: flex;
+            gap: 10px;
+            margin: 20px auto;
+            max-width: 1200px;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
+        }
+
+        .chat-box, .response-box {
+            border: 1px solid #d0d6db;
+            padding: 10px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            background-color: #ffffff;
+            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
+        }
+
+        .chat-box {
+            flex: 1;
+        }
+
+        .response-box {
+            flex: 1;
+        }
+
+        .message {
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
+        }
+
+        .user-message {
+            background-color: #d4edda;
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            background-color: #cce5ff;
+            align-self: flex-start;
+        }
+
+        .message-label {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #d0d6db;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            box-sizing: border-box; /* Ensure padding and borders are included in width/height */
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #28a745; /* Green */
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745; /* Green */
+            margin-bottom: 20px;
+        }
+
+        .toggle-button {
+            background-color: #ffffff;
+            border: 1px solid #d0d6db;
+            color: #28a745; /* Green */
+            margin-bottom: 20px;
+        }
+
+        .toggle-button:hover {
+            background-color: #f0f4f8;
+        }
+
+        .response-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .response-list li {
+            padding: 8px;
+            border-bottom: 1px solid #d0d6db;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="chat-box" id="chatBox">
+        <div class="message-label">User Messages:</div>
+    </div>
+    <div class="response-box" id="responseBox">
+        <div class="message-label">Bot Responses:</div>
+    </div>
+</div>
+
+<div style="max-width: 1200px; margin: 0 auto;">
+    <input type="text" id="messageInput" placeholder="Type your message here" />
+    <button onclick="sendMessage()">Send</button>
+
+    <!-- Toggle Button for Password Menu -->
+    <button class="toggle-button" onclick="togglePasswordMenu()">Show Password Menu</button>
+
+    <!-- Password Input for Defining Responses -->
+    <div id="passwordSection" class="hidden">
+        <h2 class="header">Enter Password to Access Response Management:</h2>
+        <input type="password" id="passwordInputDefine" placeholder="Enter password to define" />
+        <button onclick="verifyPasswordAndDefine()">Submit</button>
+        <div id="passwordErrorDefine" class="hidden" style="color: red; margin-top: 10px;">Incorrect password. Try again.</div>
+    </div>
+
+    <!-- Define Responses Section -->
+    <div id="defineResponseSection" class="hidden">
+        <h2 class="header">Define a Response:</h2>
+        <input type="text" id="inputWord" placeholder="Enter input word/sentence" />
+        <input type="text" id="responseWord" placeholder="Enter bot response" />
+        <button onclick="defineResponse()">Define</button>
+        
+        <!-- Button to clear responses -->
+        <button onclick="clearResponses()">Clear Responses</button>
+
+        <h2 class="header">Responses I Know:</h2>
+        <ul id="responseList" class="response-list"></ul>
+    </div>
+</div>
+
+<script>
+    // Firebase configuration (replace with your own config)
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database(app);
+
+    // Function to load responses from Firebase
+    function loadResponses() {
+        const responseList = document.getElementById("responseList");
+        responseList.innerHTML = "";  // Clear the current list
+
+        database.ref('responses').once('value').then(snapshot => {
+            const responses = snapshot.val() || {};
+            for (const [input, response] of Object.entries(responses)) {
+                let li = document.createElement("li");
+                li.textContent = `${input} => ${response}`;
+                responseList.appendChild(li);
+            }
+        });
+    }
+
+    // Function to define a new response
+    function defineResponse() {
+        const inputWord = document.getElementById("inputWord").value.trim().toLowerCase();
+        const responseWord = document.getElementById("responseWord").value.trim();
+
+        if (inputWord && responseWord) {
+            database.ref('responses/' + inputWord).set(responseWord).then(() => {
+                document.getElementById("inputWord").value = "";
+                document.getElementById("responseWord").value = "";
+                loadResponses();  // Refresh the responses list
+            });
+        }
+    }
+
+    // Function to clear all responses
+    function clearResponses() {
+        if (confirm("Are you sure you want to clear all responses?")) {
+            database.ref('responses').remove().then(() => {
+                loadResponses();  // Refresh the responses list
+            });
+        }
+    }
+
+    // Function to send a message and handle response
+    function sendMessage() {
+        const messageInput = document.getElementById("messageInput");
+        let message = messageInput.value.trim().toLowerCase();
+
+        if (message) {
+            // Add user message to chat box
+            let chatBox = document.getElementById("chatBox");
+            let newMessage = document.createElement("div");
+            newMessage.textContent = message;
+            newMessage.className = 'message user-message';
+            chatBox.appendChild(newMessage);
+
+            // Generate and display response
+            database.ref('responses/' + message).once('value').then(snapshot => {
+                let response = snapshot.val() || "I don't understand that.";
+                let responseBox = document.getElementById("responseBox");
+                let newResponse = document.createElement("div");
+                newResponse.textContent = response;
+                newResponse.className = 'message bot-message';
+                responseBox.appendChild(newResponse);
+
+                // Clear input
+                messageInput.value = "";
+                chatBox.scrollTop = chatBox.scrollHeight;  // Scroll to bottom
+                responseBox.scrollTop = responseBox.scrollHeight;  // Scroll to bottom
+            });
+        }
+    }
+
+    // Load the responses when the page loads
+    window.onload = function() {
+        loadResponses();
+    }
+</script>
+
+</body>
+</html>
